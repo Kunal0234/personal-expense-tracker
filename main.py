@@ -56,15 +56,45 @@ def create_expense(expense: ExpenseSchema):
     finally:
         db.close()
 
+
 @app.get("/expenses")
-def get_expenses():
+def get_expenses(
+    category: str = None,
+    sort_by: str = "date",
+    order: str = "asc",
+    skip: int = 0,
+    limit: int = 10
+):
     db = SessionLocal()
 
     try:
-        expenses = db.query(ExpenseModel).all()
+        query = db.query(ExpenseModel)
+
+        # Category filtering
+        if category:
+            query = query.filter(
+                ExpenseModel.category == category
+            )
+
+        # Sorting
+        if sort_by == "amount":
+            sort_column = ExpenseModel.amount
+        else:
+            sort_column = ExpenseModel.date
+
+        if order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # Pagination
+        expenses = query.offset(skip).limit(limit).all()
+
         return expenses
+
     finally:
         db.close()
+
 
 
 @app.get("/expenses/{expense_id}")
