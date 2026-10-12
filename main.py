@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from database import SessionLocal
 from models import Expense as ExpenseModel
-
+from models import Budget as BudgetModel
 app = FastAPI()
 
 expenses = []
@@ -19,6 +19,10 @@ class ExpenseSchema(BaseModel):
     date: str
     description:str
 
+class BudgetSchema(BaseModel):
+    month :str
+    amount : float = Field(gt=0)
+    
 
 @app.get("/")
 def home():
@@ -56,6 +60,40 @@ def create_expense(expense: ExpenseSchema):
     finally:
         db.close()
 
+
+@app.post("/budgets")
+def create_budget(budget: BudgetSchema):
+    db = SessionLocal()
+
+    try:
+        existing_budget = db.query(BudgetModel).filter(
+            BudgetModel.month == budget.month
+        ).first()
+
+        if existing_budget:
+            raise HTTPException(
+                status_code=409,
+                detail="Budget already exists for this month"
+            )
+
+        new_budget = BudgetModel(
+            month=budget.month,
+            amount=budget.amount
+        )
+
+        db.add(new_budget)
+        db.commit()
+        db.refresh(new_budget)
+
+        return {
+            "message": "Budget created successfully",
+            "id": new_budget.id,
+            "month": new_budget.month,
+            "amount": new_budget.amount
+        }
+
+    finally:
+        db.close()
 
 @app.get("/expenses")
 def get_expenses(
@@ -113,6 +151,16 @@ def show_expense(expense_id: int):
             )
 
         return expense
+    finally:
+        db.close()
+
+@app.get("/budgets")
+def get_budgets():
+    db = SessionLocal()
+
+    try:
+        budgets = db.query(BudgetModel).all()
+        return budgets
     finally:
         db.close()
 

@@ -1,5 +1,5 @@
 from database import engine, Base
-from models import Expense
+from models import Expense,Budget
 
 Base.metadata.create_all(bind=engine)
 
